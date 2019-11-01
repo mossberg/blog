@@ -3,7 +3,7 @@ layout: post
 title: "Building a Sketchy Website 101"
 date: 2015-04-25 17:42:10 -0400
 comments: true
-categories: [hacking, web, sysadmin]
+tags: [hacking, web, sysadmin]
 ---
 
 Back in April, I won a free ".club" domain through gandi.net's

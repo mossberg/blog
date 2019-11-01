@@ -3,7 +3,7 @@ layout: post
 title: "Let's understand: setjmp()/longjmp()"
 date: 2016-02-09
 comments: true
-categories: assembly linux
+tags: [assembly, linux, lowlevel]
 published: true
 ---
 

@@ -1,9 +1,10 @@
-baseURL = "http://example.org/"
+baseURL = "https://vmresu.me/"
 languageCode = "en-us"
 title = "Mark Mossberg's Blog"
 #theme = "ezhil"
 theme = "hugo-theme-cactus-plus"
 
+googleAnalytics = "UA-36552439-2"
 
 # Enable syntax highlighting.
 pygmentsstyle = "tango"
@@ -26,7 +27,7 @@ pygmentscodefences = true
 	# enableToc = true
 
 	enableDisqus = true
-	disqusShortname = "your_disqus_short_name"
+	disqusShortname = "markmossberg"
 
 
 	# enableSummary = true

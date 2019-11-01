@@ -3,7 +3,7 @@ layout: post
 title: "Building a Simple IoT Light Switch, Pt. 2"
 date: 2015-06-14 15:13:07 -0400
 comments: true
-categories: hardware
+tags: [hardware]
 ---
 
 This is a pretty late post, but I wanted to show off the hardware I designed

@@ -3,7 +3,11 @@ layout: post
 title: "Building A Simple IoT Light Switch"
 date: 2015-01-18 13:32:48 -0500
 comments: true
-categories: programming python hardware
+tags: [
+'programming',
+'python',
+'hardware'
+]
 ---
 
 I'm lucky enough to own a [Philips Hue](http://www.meethue.com) wireless
