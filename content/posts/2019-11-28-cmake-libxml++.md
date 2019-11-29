@@ -27,7 +27,7 @@ as a dependency for another app, and aren't planning on doing any dev work,
 you can simply download the `libxml++2.6-2v5` package, which only contains
 the shared objects, and no headers.
 
-We can check what's inside a apt package using `dpkg -L`.
+We can check what's inside an apt package using `dpkg -L`.
 
 ```txt
 [I] vagrant ubuntu-bionic /v/l/c/x/l/b ❯ dpkg -L libxml++2.6-dev | head -n10
@@ -111,8 +111,10 @@ checking whether g++ supports C++11 features by default... yes
 ```
 
 This is consistent with the libxml++ [docs](https://developer.gnome.org/libxml++-tutorial/stable/chapter-introduction.html) that state that a
-C++11 compliant compiler is required. I guess I'll assume they they used C++11,
-and will make sure to use that standard when compiling my app.
+C++11 compliant compiler is required. I guess I'll assume they used C++11,
+and should make sure to use that standard when compiling my app. If I want to
+use a newer standard in my app, then I should not use this pre-built package,
+and should build it myself.
 
 Anyway, now that we've roughly checked that it's ok to use this binary with our
 system toolchain, let's continue.
@@ -171,7 +173,7 @@ In file included from /usr/include/c++/7/memory:80:0,
 ```
 
 I needed to use `eval` because I use fish shell, which apparently has some issues
-with command substition used this way[^5].
+with command substitution used this way[^5].
 
 There's a TON of warnings about `std::auto_ptr` (which is deprecated, and removed in C++17[^6]🤮), but no errors, so yay,
 it worked! Also, all those warnings appear in ubuntu's official build output too!
