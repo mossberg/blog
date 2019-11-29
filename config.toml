@@ -24,7 +24,7 @@ pygmentscodefences = true
 	twitter = "offlinemark"
 
 	enableRSS = true
-	# enableToc = true
+	enableToc = true
 
 	enableDisqus = true
 	disqusShortname = "markmossberg"
