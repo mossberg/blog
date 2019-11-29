@@ -1,5 +1,5 @@
 +++
-title = "Notes on pedantic C++ compilation"
+title = "Being pedantic about C++ compilation"
 date = 2019-11-28T11:18:14-05:00
 tags = [
 "linux",
@@ -9,7 +9,6 @@ tags = [
 ]
 categories = [""]
 draft = false
-enableToc = true
 +++
 
 > **Takeaways**:
