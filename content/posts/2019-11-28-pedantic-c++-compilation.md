@@ -22,7 +22,7 @@ draft = false
 > - `pkg-config` is useful for generating the flags needed to compile a complex third-party dependency.
 > CMake's `PkgConfig` can make it easy to integrate a dep into your CMake build system.
 
-> - Use the CMake `IMPORTED` targets (e.g. `BZip2::Bzip2`) versus legacy variables (e.g. `BZIP2_INCLUDE_DIRS` and `BZIP2_LIBRARIES`).
+> - Use CMake `IMPORTED` targets (e.g. `BZip2::Bzip2`) versus legacy variables (e.g. `BZIP2_INCLUDE_DIRS` and `BZIP2_LIBRARIES`).
 
 ----
 
