@@ -1,15 +1,33 @@
 +++
-title = "C++ compilation notes (CMake + libxml++)"
+title = "Notes on pedantic C++ compilation"
 date = 2019-11-28T11:18:14-05:00
 tags = [
 "linux",
 "cmake",
 "C++",
+"Build",
 ]
 categories = [""]
 draft = false
+enableToc = true
 +++
 
+> **Takeaways**:
+
+> - Don't assume it's safe to use pre-built dependencies when compiling C++ programs. You might want to build from source,
+> especially if you can't determine how a pre-built object was compiled, or if you want to use a different C++ standard
+> than was used to compile it.
+
+> - Ubuntu has public build logs which you can help you determine if you can use a pre-built object, or if you should compile from source.
+
+> - `pkg-config` is useful for generating the flags needed to compile a complex third-party dependency.
+> CMake's `PkgConfig` can make it easy to integrate a dep into your CMake build system.
+
+> - Use the CMake `IMPORTED` targets (e.g. `BZip2::Bzip2`) versus legacy variables (e.g. `BZIP2_INCLUDE_DIRS` and `BZIP2_LIBRARIES`).
+
+----
+
+## Introduction
 
 Let's set up a simple C++ program that links to libxml++ on Ubuntu 18.04.
 
@@ -55,10 +73,15 @@ We can check what's inside an apt package using `dpkg -L`.
 /usr/share/doc/libxml++2.6-2v5/changelog.Debian.gz
 /usr/share/doc/libxml++2.6-2v5/copyright
 /usr/lib/x86_64-linux-gnu/libxml++-2.6.so.2
+[I] vagrant ubuntu-bionic /v/l/c/x/l/b ❯
 ```
 
-In general, we should exercise a bit of caution when dealing with pre-built
-objects. Due to ABI incompatibility, it's technically good practice to
+## ABI Incompatibility
+
+**In general, we should exercise a bit of caution when dealing with pre-built
+objects.**
+
+Due to ABI incompatibility, it's technically good practice to
 ensure that all objects used in a compilation process were compiled with the
 same[^1]:
 
@@ -66,8 +89,13 @@ same[^1]:
 - Compiler (major) version
 - Compiler flags (including ABI version [`-fabi-version`])
 
-If we really wanted to be thorough, we could check how this `libxml++2.6.so.2`
-was compiled by looking at the build logs.
+Otherwise, we could (at best) have link errors, or even runtime errors and
+*memory corruption* 😋.
+
+So if we really wanted to be confident that we are avoiding these issues,
+ we could check how this `libxml++2.6.so.2`
+was compiled and ensure we compile our app in the same way.
+To do this, we can look at the build logs.
 
 I googled "ubuntu libxml++ apt" and found this: https://launchpad.net/ubuntu/+source/libxml%2B%2B2.6.
 Digging around a bit more, I was able to find the build log for the amd64 build
@@ -95,7 +123,7 @@ it should still be fine. Honestly, even if they were even a major version away,
 gcc is known for prioritizing ABI stability, so it probably wouldn't be a problem
 anyway[^2].
 In general, most platforms unofficially guarantee ABI stability, so this is not
-really a big concern. In the past, however, Windows notably intentionally broke
+really a big concern. In the past, however, Windows intentionally broke
 ABI in every major release of Visual Studio[^3], so it's good to be aware of this stuff.
 With modern Visual Studio, they also seem to be trending more towards stability.
 
@@ -103,21 +131,43 @@ With modern Visual Studio, they also seem to be trending more towards stability.
 > We want to keep the momentum going and make sure that you have a similarly successful adoption experience with MSVC v142 too. This is why we’re announcing today that our team is committed to provide binary compatibility for MSVC v142 with both MSVC v141 and v140.
 [^4]
 
-I couldn't tell for certain what C++ standard was being used (didn't see `-std=`)
-in the log anywhere, but I did see this line from the `./configure` output.
+I didn't see `-std=` anywhere in that output, so we'll assume the code is compiled
+with the default c++ standard for g++ 7.2.0. Find exactly what standard it is,
+we can look at the gcc documentation for that version. Version 7.2.0 isn't available
+on the [gcc website](https://gcc.gnu.org/onlinedocs/), but the URLs are consistent, so we can
+guess the URL for 7.2.0: https://gcc.gnu.org/onlinedocs/gcc-7.2.0/gcc/Standards.html#C_002b_002b-Language.
 
-```txt
-checking whether g++ supports C++11 features by default... yes
+> The default, if no C++ language dialect options are given, is -std=gnu++14.
+
+Therefore, when I build my app, to ensure compatibility, we should
+make sure to use exactly this standard flag.
+
+In case I happened to have that version of gcc installed locally, it seems
+that this is the *easiest* way to find the default c++ version[^default_version] 😔:
+
+```
+g++ -dM -E -xc++ /dev/null | grep __cplusplus
 ```
 
-This is consistent with the libxml++ [docs](https://developer.gnome.org/libxml++-tutorial/stable/chapter-introduction.html) that state that a
-C++11 compliant compiler is required. I guess I'll assume they used C++11,
-and should make sure to use that standard when compiling my app. If I want to
-use a newer standard in my app, then I should not use this pre-built package,
-and should build it myself.
+## When do I need to build from source?
+
+What if there wasn't a build log available?
+Then we have no way of knowing how that object was built, and furthermore,
+no way of knowing if we are building our client app in an ABI compatible way. 
+We should build libxml++ from source, or "risk" incompatibility issues.
+
+What if we want to use c++ 17 instead of 14 (with GNU extensions) for our app? 
+What if we want to use standard c++ 14 instead of GNU c++ 14?
+We have no choice here; we should compile libxml++ from source with whatever
+standard we want to use in our app. (Although in this case, we can't because
+`std::auto_ptr` was removed in c++ 17, and libxml++-2.6 uses it. libxml++-3.0
+fixes this, but it this wasn't available, we'd need to find another xml library).
+
+## Building our app
 
 Anyway, now that we've roughly checked that it's ok to use this binary with our
-system toolchain, let's continue.
+system toolchain, and determined what `-std=` flag we should use,
+let's continue.
 
 My goal is to get this program to compile, which tests whether we can include
 the libxml++ headers, and instantiate a class.
@@ -147,7 +197,7 @@ that need to be passed to the compiler, and also their own `-l` linker flags.
 Using pkg-config, we can easily run a manual gcc command to compile our app.
 
 ```txt
-[I] vagrant ubuntu-bionic /v/l/c/x/libxml++play ❯ eval g++ main.cc (pkg-config --cflags --libs libxml++-2.6)
+[I] vagrant ubuntu-bionic /v/l/c/x/libxml++play ❯ eval g++ main.cc -std=gnu++14 (pkg-config --cflags --libs libxml++-2.6)
 In file included from /usr/include/libxml++-2.6/libxml++/libxml++.h:53:0,
                  from main.cc:1:
 /usr/include/libxml++-2.6/libxml++/parsers/saxparser.h:224:8: warning: ‘template<class> class std::auto_ptr’ is deprecated [-Wdeprecated-declarations]
@@ -179,6 +229,8 @@ There's a TON of warnings about `std::auto_ptr` (which is deprecated, and remove
 it worked! Also, all those warnings appear in ubuntu's official build output too!
 That's pretty cool to see.
 
+## Building our app with CMake
+
 Using this, we could start to write a Makefile, and create a build
 system for our app.
 I'd like to use CMake though; it's a bit more modern and lets you avoid
@@ -188,11 +240,25 @@ A basic `CMakeLists.txt` looks like this.
 
 ```cmake
 cmake_minimum_required(VERSION 3.6)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)  # it might "decay" to a previous std otherwise
+set(CMAKE_CXX_EXTENSIONS ON)  # it's on by default anyway
+
 project(main)
 add_executable(main main.cc)
 ```
 
-But we still need to tell CMake about our libxml++ dependency, otherwise, we
+The three `set` lines will produce the `-std=gnu++14` flag that we want.
+`CMAKE_CXX_STANDARD_REQUIRED` will trigger an error if, for some reason,
+c++ 14 support is not available in our compiler. Otherwise, CMake might silently
+"decay" to a previous standard[^decay]. `CMAKE_CXX_EXTENSIONS` is what requests
+using `-std=gnu++14` vs `-std=c++14`[^gnu]. This is actually enabled by default!
+So keep in mind that if you want your project to strictly use standard c++,
+with no extensions, you should disable this variable.
+
+Now that we've taken care of setting the proper standard, we need to
+tell CMake about our libxml++ dependency, otherwise, we
 get an error about includes. When you want to add a system dependency (typically
 residing in `/usr`, not in your source tree), you typically use a CMake "find module".
 These are little CMake programs that ship with CMake designed to build targets
@@ -220,7 +286,7 @@ find_package(BZip2 REQUIRED)
 ```
 
 which will automatically find the locations of the bzip2 headers and shared objects
-and prepare a CMake imported target for you to link against in a `target_link_libraries` call.
+and prepare a CMake `IMPORTED` target for you to link against in a `target_link_libraries` call.
 
 ```cmake
 # the modern way; prefer this
@@ -257,11 +323,19 @@ and have a ton of cmake code.
 Since libxml++ includes a `pkg-config` file, writing our own cmake to link
 against it is actually not too hard. CMake's `pkg-config` module
 includes the `pkg_check_modules` helper function which will automatically
-create an IMPORTED target if you use the `IMPORTED_TARGET` argument.
+create an `IMPORTED` target if you use the `IMPORTED_TARGET` argument.
 Then you can easily use that target in a `target_link_libraries` call.
+
+It seems like this is not that widely known? All of the above links use the
+legacy way with CMake `*_INCLUDE_DIRS` and `*_LIBRARIES` variables.
 
 ```cmake
 cmake_minimum_required(VERSION 3.6)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)  # it might "decay" to a previous std otherwise
+set(CMAKE_CXX_EXTENSIONS ON)  # it's on by default anyway
+
 project(main)
 
 function(main)
@@ -309,13 +383,21 @@ Scanning dependencies of target main
 [100%] Built target main
 ```
 
+## Conclusion
+
 This works pretty well! Our program builds and links successfully, and we can
-actually start development. Plus, our CMake code to handle libxml++ is a lot
-simpler than what was in those random links we found.
+actually start development. We can be especially confident that we've avoided
+subtle ABI incompatibility issues (that might only manifest at runtime!)
+because we took the time to ensure that our app builds in the same way as
+the pre-built library.  Plus, our CMake to handle libxml++
+is a lot simpler than what was in those random links we found.
 
 [^1]: For more info, see this talk: https://youtu.be/ncyQAjTyPwU?list=WL&t=571
-[^2]: More info: https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
+[^2]: https://gcc.gnu.org/onlinedocs/libstdc++/manual/abi.html.
 [^3]: https://www.reddit.com/r/cpp/comments/13zex3/can_vs2010_c_libsdlls_be_linked_into_a_vs2012_c/c78ott7/
 [^4]: https://devblogs.microsoft.com/cppblog/cpp-binary-compatibility-and-pain-free-upgrades-to-visual-studio-2019/
 [^5]: https://github.com/fish-shell/fish-shell/issues/982
 [^6]: https://en.cppreference.com/w/cpp/memory
+[^default_version]: https://stackoverflow.com/a/44735016
+[^decay]: http://cmake.org/cmake/help/v3.16/prop_tgt/CXX_STANDARD_REQUIRED.html
+[^gnu]: http://cmake.org/cmake/help/v3.16/prop_tgt/CXX_EXTENSIONS.html
