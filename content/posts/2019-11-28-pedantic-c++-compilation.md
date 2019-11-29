@@ -160,7 +160,8 @@ What if we want to use standard c++ 14 instead of GNU c++ 14?
 We have no choice here; we should compile libxml++ from source with whatever
 standard we want to use in our app. (Although in this case, we can't because
 `std::auto_ptr` was removed in c++ 17, and libxml++-2.6 uses it. libxml++-3.0
-fixes this, but it this wasn't available, we'd need to find another xml library).
+fixes this, but it this wasn't available, we'd need to find another xml library
+or port it ourselves).
 
 ## Building our app
 
