@@ -17,7 +17,7 @@ draft = false
 > especially if you can't determine how a pre-built object was compiled, or if you want to use a different C++ standard
 > than was used to compile it.
 
-> - Ubuntu has public build logs which you can help you determine if you can use a pre-built object, or if you should compile from source.
+> - Ubuntu has public build logs which can help you determine if you can use a pre-built object, or if you should compile from source.
 
 > - `pkg-config` is useful for generating the flags needed to compile a complex third-party dependency.
 > CMake's `PkgConfig` module can make it easy to integrate a dep into your build system.
