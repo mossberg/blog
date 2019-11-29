@@ -144,7 +144,7 @@ make sure to use exactly this standard flag.
 In case I happened to have that version of gcc installed locally, it seems
 that this is the *easiest* way to find the default c++ version[^default_version] 😔:
 
-```
+```txt
 [I] vagrant ubuntu-bionic /v/l/c/compileplay ❯ g++ -dM -E -xc++ /dev/null | grep __cplusplus
 #define __cplusplus 201402L
 ```
