@@ -141,8 +141,8 @@ guess the URL for 7.2.0: https://gcc.gnu.org/onlinedocs/gcc-7.2.0/gcc/Standards.
 Therefore, when I build my app, to ensure compatibility, we should
 make sure to use exactly this standard flag.
 
-In case I happened to have that version of gcc installed locally, it seems
-that this is the *easiest* way to find the default c++ version[^default_version] 😔:
+In case you happen to have that version of gcc installed locally, it seems
+that this is the *easiest* way to find the default c++ standard[^default_version] 😔:
 
 ```txt
 [I] vagrant ubuntu-bionic /v/l/c/compileplay ❯ g++ -dM -E -xc++ /dev/null | grep __cplusplus
