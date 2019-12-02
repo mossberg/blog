@@ -123,7 +123,7 @@ gcc is known for prioritizing ABI stability, so it probably wouldn't be a proble
 anyway[^2].
 In general, most platforms unofficially guarantee ABI stability, so this is not
 really a big concern. In the past, however, Windows intentionally broke
-ABI in every major release of Visual Studio[^3], so it's good to be aware of this stuff.
+the library ABI in every major release of Visual Studio[^3], so it's still good to be aware of compatibility.
 With modern Visual Studio, they also seem to be trending more towards stability.
 
 > We heard it loud and clear that a major reason contributing to MSVC v141’s fast adoption today is its binary compatibility with MSVC v140. This allowed you to migrate your own code to the v141 toolset at your own pace, without having to wait for any of your 3rd party library dependencies to migrate first.
@@ -131,9 +131,9 @@ With modern Visual Studio, they also seem to be trending more towards stability.
 [^4]
 
 I didn't see `-std=` anywhere in that output, so we'll assume the code is compiled
-with the default c++ standard for g++ 7.2.0. Find exactly what standard it is,
-we can look at the gcc documentation for that version. Version 7.2.0 isn't available
-on the [gcc website](https://gcc.gnu.org/onlinedocs/), but the URLs are consistent, so we can
+with the default C++ standard for g++ 7.2.0. Find exactly what standard it is,
+we can look at the gcc documentation for that version. Version 7.2.0 isn't listed 
+[here](https://gcc.gnu.org/onlinedocs/), but the URLs are consistent, so we can
 guess the URL for 7.2.0: https://gcc.gnu.org/onlinedocs/gcc-7.2.0/gcc/Standards.html#C_002b_002b-Language.
 
 > The default, if no C++ language dialect options are given, is -std=gnu++14.
@@ -142,7 +142,7 @@ Therefore, when I build my app, to ensure compatibility, we should
 make sure to use exactly this standard flag.
 
 In case you happen to have that version of gcc installed locally, it seems
-that this is the *easiest* way to find the default c++ standard[^default_version] 😔:
+that this is the *easiest* way to find the default C++ standard[^default_version] 😔:
 
 ```txt
 [I] vagrant ubuntu-bionic /v/l/c/compileplay ❯ g++ -dM -E -xc++ /dev/null | grep __cplusplus
@@ -152,17 +152,50 @@ that this is the *easiest* way to find the default c++ standard[^default_version
 ## When do I need to build from source?
 
 What if there wasn't a build log available?
-Then we have no way of knowing how that object was built, and furthermore,
+Then we have no way of knowing how that object was built, and therefore,
 no way of knowing if we are building our client app in an ABI compatible way. 
 We should build libxml++ from source, or "risk" incompatibility issues.
 
-What if we want to use c++ 17 instead of 14 (with GNU extensions) for our app? 
-What if we want to use standard c++ 14 instead of GNU c++ 14?
-We have no choice here; we should compile libxml++ from source with whatever
-standard we want to use in our app. (Although in this case, we can't because
-`std::auto_ptr` was removed in c++ 17, and libxml++-2.6 uses it. libxml++-3.0
-fixes this, but it this wasn't available, we'd need to find another xml library
-or port it ourselves).
+What if we want to use C++17 instead of 14 (with GNU extensions) for our app? 
+What if we want to use standard C++14 instead of GNU C++14?
+If the same compiler version is used to compile the app,
+recompiling may not be strictly necessary in this case, since gcc does
+have a strong cross-standard compatibility policy[^gcc_compat].
+This will probably "just work" for many cases.
+However, in general, this
+depends on the compiler's language and library ABI compatibility
+across standard versions, and the specific nature of the interface between the objects.
+(What kinds of language features are used in the interface boundary?
+Do STL types pass through it?)
+
+Even given gcc's strong cross-standard compatibility policy,
+recompiling everything with the same compiler version *and* standard version would be
+the safest option, due to ABI bugs that have been known to happen.
+
+> GCC versions 4.7.0 and 4.7.1 had changes to the C++ standard library which
+> affected the ABI in C++11 mode: a data member was added to std::list changing
+> its size and altering the definitions of some member functions, and
+> std::pair's move constructor was non-trivial which altered the calling
+> convention for functions with std::pair arguments or return types. The ABI
+> incompatibilities have been fixed for GCC version 4.7.2 **but as a result C++11
+> code compiled with GCC 4.7.0 or 4.7.1 may be incompatible with C++11 code
+> compiled with different GCC versions and with C++98/C++03 code compiled with
+> any version**.[^gcc4bug]
+
+In that case, C++11 code compiled with GCC 4.7.0 could be incompatible with
+C++03 code compiled with the same version, for example.
+
+Unfortunately, it may not be possible to arbitrarily
+recompile code at a standard version it was not written for. For example,
+libxml++-2.6 makes liberal use of `std::auto_ptr`, which was removed in C++17).
+Porting may be necessary, or finding a replacement library, if that is not
+an option. If the main reason C++17 is desired for the app is because of
+standard library features, it might be possible to target the older standard,
+and get the new standard library features through a third party (like Abseil).
+
+In general, linking between objects built by the same compiler version, but
+at different standard versions *should* be fine, but if recompiling at the
+same standard version is possible, it should be preferred.
 
 ## Building our app
 
@@ -252,10 +285,10 @@ add_executable(main main.cc)
 
 The three `set` lines will produce the `-std=gnu++14` flag that we want.
 `CMAKE_CXX_STANDARD_REQUIRED` will trigger an error if, for some reason,
-c++ 14 support is not available in our compiler. Otherwise, CMake might silently
+C++14 support is not available in our compiler. Otherwise, CMake might silently
 "decay" to a previous standard[^decay]. `CMAKE_CXX_EXTENSIONS` is what requests
 using `-std=gnu++14` vs `-std=c++14`[^gnu]. This is actually enabled by default!
-So keep in mind that if you want your project to strictly use standard c++,
+So keep in mind that if you want your project to strictly use standard C++,
 with no extensions, you should disable this variable.
 
 Now that we've taken care of setting the proper standard, we need to
@@ -402,3 +435,7 @@ is a lot simpler than what was in those random links we found.
 [^default_version]: https://stackoverflow.com/a/44735016
 [^decay]: http://cmake.org/cmake/help/v3.16/prop_tgt/CXX_STANDARD_REQUIRED.html
 [^gnu]: http://cmake.org/cmake/help/v3.16/prop_tgt/CXX_EXTENSIONS.html
+[^gcc_compat]: https://stackoverflow.com/a/49119902
+[^ms_abi]: https://docs.microsoft.com/en-us/cpp/cpp/portability-at-abi-boundaries-modern-cpp?view=vs-2019
+[^abibug]: GCC 8.1 accidentally changed the calling convention for how certain types of classes are passed. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86094
+[^gcc4bug]: https://gcc.gnu.org/gcc-4.7/changes.html
